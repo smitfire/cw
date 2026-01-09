@@ -1,233 +1,273 @@
 # cw - Claude Worktree
 
-Git worktrees + Claude Code + GitHub, unified.
+> Git worktrees + Claude Code + GitHub, unified.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  cw new feat/auth                                           │
+│                                                             │
+│  ✓ Created worktree at ../myapp__wt/feat-auth               │
+│  ✓ Copied .env, .env.local                                  │
+│  ✓ Linked .claude directory                                 │
+│  ✓ Installed dependencies (pnpm)                            │
+│  ✓ Assigned port 3001                                       │
+│  ✓ Opening Warp tab...                                      │
+│  ✓ Starting Claude Code session...                          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Why cw?
+
+**The Problem:** Working on multiple features simultaneously with Claude Code is painful:
+- Manually creating worktrees with long git commands
+- Copying env files every time
+- Figuring out which ports are free
+- Opening terminals, navigating, starting Claude
+- Losing track of what's where
+
+**The Solution:** One command does it all.
 
 ## Install
-
-### Homebrew (Recommended)
 
 ```bash
 brew tap smitfire/cw
 brew install cw
 ```
 
-### Manual Install
+<details>
+<summary>Other installation methods</summary>
 
+### curl installer
 ```bash
 curl -sL https://raw.githubusercontent.com/smitfire/cw/main/install.sh | bash
 ```
 
-### From Source
-
+### From source
 ```bash
 git clone https://github.com/smitfire/cw.git
-cd cw
-cp bin/cw ~/.local/bin/
-chmod +x ~/.local/bin/cw
+cd cw && cp bin/cw ~/.local/bin/ && chmod +x ~/.local/bin/cw
 ```
+</details>
 
 ## Quick Start
 
 ```bash
-# Initialize project config (optional)
-cw init
-
-# Create a new worktree and open Claude
-cw new feat/my-feature
-
-# Switch to an existing worktree
-cw go feat/other-feature
-
-# See all worktrees with status
-cw ls
-
-# Create a PR from current branch
-cw pr
-
-# Full dashboard view
-cw status
+cw init                    # One-time project setup
+cw new feat/my-feature     # Create worktree → Claude opens automatically
 ```
 
-## Commands
+That's it. You're coding.
 
-| Command | Description |
-|---------|-------------|
-| `cw new <branch>` | Create worktree and open Claude session |
-| `cw go <branch>` | Open existing worktree in terminal |
-| `cw ls` | List all worktrees with status |
-| `cw rm <branch>` | Remove a worktree |
-| `cw pr` | Create PR from current branch |
-| `cw prs` | Show all your open PRs |
-| `cw sync [branch]` | Rebase on base branch |
-| `cw status` | Full dashboard view |
-| `cw ports` | Show port assignments |
-| `cw init` | Create .worktreerc config |
-| `cw prune` | Clean up stale worktrees |
+---
 
-## Options
+## Use Cases
 
-### `cw new`
+### 🔀 Parallel Feature Development
+
+Work on multiple features without stashing or losing context:
 
 ```bash
-cw new feat/auth              # Create from default base branch
-cw new feat/auth --from main  # Create from specific branch
-cw new feat/auth --no-install # Skip package installation
-cw new feat/auth --no-claude  # Don't auto-start Claude
-```
-
-### `cw pr`
-
-```bash
-cw pr                         # Create PR interactively
-cw pr --draft                 # Create as draft PR
-cw pr -t "Title" -b "Body"    # With title and body
-```
-
-## Features
-
-- **Worktree Management** - Create, list, remove git worktrees with ease
-- **Claude Integration** - Auto-opens Claude Code sessions in new terminal tabs
-- **GitHub PRs** - Create, list, sync PRs without leaving terminal
-- **Port Management** - Auto-assigns ports for parallel dev servers
-- **Terminal Integration** - Works with Warp, iTerm2, Terminal.app, Kitty, and more
-- **Cross-Platform** - Works on macOS and Linux
-
-## Configuration
-
-Run `cw init` in your project to create a `.worktreerc` config file:
-
-```bash
-# .worktreerc - Project configuration for cw
-BASE_PORT=3000          # Starting port for dev servers
-BASE_BRANCH=main        # Default PR target branch
-AUTO_CLAUDE=true        # Auto-start Claude in new tabs
-ENV_FILES=.env .env.local  # Files to copy to new worktrees
-SYMLINK_DIRS=.claude    # Directories to symlink
-POST_CREATE_HOOK=       # Command to run after creating worktree
-```
-
-### Port Management
-
-Each worktree gets a unique port based on `BASE_PORT`:
-
-```
-main repo     → 3000
-feat/auth     → 3001
-feat/api      → 3002
-```
-
-View assignments with `cw ports`.
-
-## Requirements
-
-- **Git** - Obviously
-- **GitHub CLI** (`gh`) - For PR features. Install: `brew install gh`
-- **Claude Code** (`claude`) - Optional. For auto-starting Claude sessions
-
-## Terminal Support
-
-| Terminal | Tab Opening | Auto-Claude |
-|----------|-------------|-------------|
-| Warp | ✅ URI scheme | ✅ AppleScript |
-| iTerm2 | ✅ AppleScript | ✅ |
-| Terminal.app | ✅ AppleScript | ❌ |
-| Kitty | ✅ Remote control | ✅ |
-| GNOME Terminal | ✅ CLI | ✅ |
-| Other | ❌ Manual | ❌ |
-
-## Shell Completions
-
-### Bash
-
-Add to `~/.bashrc`:
-```bash
-source $(brew --prefix)/etc/bash_completion.d/cw
-```
-
-### Zsh
-
-Usually automatic with oh-my-zsh. Or add to `~/.zshrc`:
-```zsh
-fpath=($(brew --prefix)/share/zsh/site-functions $fpath)
-autoload -Uz compinit && compinit
-```
-
-### Fish
-
-Automatic after Homebrew install.
-
-## Examples
-
-### Parallel Feature Development
-
-```bash
-# Start working on auth
+# Start auth feature
 cw new feat/auth
-# Claude opens, you're coding...
+# Claude opens, you implement OAuth...
 
-# Need to review something else? Open another tab
-cw go feat/api
+# Urgent bug? Open another worktree
+cw new fix/critical-bug
+# Fix it in isolation, no context switching
 
 # Back to auth
 cw go feat/auth
-
-# Done with auth, create PR
-cw pr --draft
-
-# Clean up
-cw rm feat/auth
+# Everything's exactly where you left it
 ```
 
-### Daily Workflow
+### 🔍 Code Review While Coding
+
+Review a PR without disrupting your work:
 
 ```bash
-# Morning: check status
-cw status
+# You're deep in feat/dashboard
+# Teammate asks for review on feat/api
 
-# See what PRs need attention
-cw prs
+cw new feat/api           # Opens their branch
+# Review, test, approve
 
-# Sync your branch with latest dev
-cw sync
-
-# Continue working
-cw go feat/current-task
+cw go feat/dashboard      # Back to your work instantly
 ```
+
+### 🧪 Experiment Freely
+
+Try risky changes without fear:
+
+```bash
+cw new experiment/new-arch --from main
+# Go wild with refactoring
+# If it works: cw pr
+# If it doesn't: cw rm experiment/new-arch
+# Main branch never touched
+```
+
+### 📊 Dashboard View
+
+See everything at a glance:
+
+```
+$ cw status
+
+╭──────────────────── WORKTREES ────────────────────╮
+│                                                    │
+│  main         → Clean                              │
+│  feat/auth    → 3 files changed │ Port 3001        │
+│  feat/api     → PR #42 (Draft)  │ Port 3002        │
+│  fix/bug-123  → 1 ahead         │ Port 3003        │
+│                                                    │
+╰────────────────────────────────────────────────────╯
+
+╭──────────────────── YOUR PRS ─────────────────────╮
+│                                                    │
+│  #42  feat/api      Draft    Add REST endpoints   │
+│  #38  feat/search   Review   Full-text search     │
+│                                                    │
+╰────────────────────────────────────────────────────╯
+```
+
+---
+
+## Commands
+
+| Command | What it does |
+|---------|--------------|
+| `cw new <branch>` | Create worktree + open Claude |
+| `cw go <branch>` | Jump to existing worktree |
+| `cw ls` | List all worktrees |
+| `cw rm <branch>` | Remove a worktree |
+| `cw pr` | Create GitHub PR |
+| `cw prs` | List your open PRs |
+| `cw sync` | Rebase on base branch |
+| `cw status` | Full dashboard |
+| `cw ports` | Show port assignments |
+| `cw prune` | Clean up stale worktrees |
+
+### Options
+
+```bash
+cw new feat/auth --from main     # Branch from specific base
+cw new feat/auth --no-install    # Skip package installation
+cw new feat/auth --no-claude     # Don't auto-start Claude
+cw pr --draft                    # Create draft PR
+cw pr -t "Title" -b "Body"       # Set PR title and body
+```
+
+---
+
+## Configuration
+
+Run `cw init` to create `.worktreerc`:
+
+```bash
+# .worktreerc
+BASE_PORT=3000              # Dev server ports start here
+BASE_BRANCH=dev             # Default PR target
+AUTO_CLAUDE=true            # Auto-start Claude in new tabs
+ENV_FILES=.env .env.local   # Copy these to new worktrees
+SYMLINK_DIRS=.claude        # Symlink these directories
+```
+
+### How Ports Work
+
+Each worktree gets a unique port:
+
+```
+main repo     → 3000 (BASE_PORT)
+feat/auth     → 3001
+feat/api      → 3002
+fix/bug-123   → 3003
+```
+
+No more port conflicts. Run `cw ports` to see assignments.
+
+---
+
+## Terminal Support
+
+| Terminal | Auto-open tabs | Auto-start Claude |
+|----------|----------------|-------------------|
+| Warp | ✅ | ✅ |
+| iTerm2 | ✅ | ✅ |
+| Terminal.app | ✅ | ❌ |
+| Kitty | ✅ | ✅ |
+| GNOME Terminal | ✅ | ✅ |
+| Other | ❌ (prints path) | ❌ |
+
+---
 
 ## How It Works
 
-### Worktree Structure
-
 ```
-your-repo/              # Main repository
-your-repo__wt/          # Worktrees directory
-├── feat-auth/          # feat/auth worktree
-├── feat-api/           # feat/api worktree
-└── fix-bug-123/        # fix/bug-123 worktree
+your-project/                    # Main repo (stay clean)
+your-project__wt/                # All worktrees live here
+├── feat-auth/                   # feat/auth branch
+│   ├── .env                     # Copied from main
+│   ├── .claude -> ../../.claude # Symlinked
+│   └── ...
+├── feat-api/
+└── fix-bug-123/
 ```
 
-### Port Assignment
+- Worktrees share git history (fast creation)
+- Each has its own working directory (no conflicts)
+- Env files copied, config directories symlinked
 
-Ports are tracked in `.worktree-ports` and automatically assigned based on your `BASE_PORT` setting.
+---
 
-## Troubleshooting
+## Requirements
 
-### "Claude not found"
+- **Git** 2.15+ (for worktree features)
+- **GitHub CLI** (`gh`) - for PR features
+- **Claude Code** (`claude`) - optional, for auto-start
 
-Install Claude Code CLI: https://claude.ai/code
+```bash
+# Install dependencies
+brew install gh
+gh auth login
+```
 
-### "gh not authenticated"
+---
 
-Run `gh auth login` to authenticate with GitHub.
+## Tips
 
-### Terminal tabs not opening
+**Naming Convention:** Use prefixes for organization
+```bash
+feat/    # New features
+fix/     # Bug fixes
+exp/     # Experiments
+refactor/# Refactoring
+```
 
-Your terminal may not be supported for programmatic tab opening. You'll see instructions to manually navigate.
+**Quick Cleanup:** Remove all merged worktrees
+```bash
+cw prune
+```
+
+**Check What's Open:**
+```bash
+cw ls    # Quick list
+cw status # Full dashboard
+```
+
+---
 
 ## Contributing
 
-Pull requests welcome! Please open an issue first to discuss what you'd like to change.
+PRs welcome! Please open an issue first to discuss changes.
+
+```bash
+git clone https://github.com/smitfire/cw.git
+cd cw
+# Tests use BATS
+brew install bats-core
+bats tests/
+```
 
 ## License
 
-MIT - see [LICENSE](LICENSE)
+MIT
