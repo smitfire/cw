@@ -2,7 +2,7 @@ class Cw < Formula
   desc "Claude Worktree - Git worktrees + Claude Code + GitHub integration"
   homepage "https://github.com/smitfire/cw"
   url "https://github.com/smitfire/cw/archive/refs/tags/v1.0.0.tar.gz"
-  sha256 "PLACEHOLDER_SHA256_HASH"
+  sha256 "fa9f9393bf1d277add6514cbc4df31c4315a73320a9c2e61c4005b772dfb48c8"
   license "MIT"
   head "https://github.com/smitfire/cw.git", branch: "main"
 
