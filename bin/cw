@@ -390,104 +390,29 @@ run_install() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Terminal Integration (Cross-Platform)
+# Terminal Integration
 # ─────────────────────────────────────────────────────────────────────────────
 
-open_new_tab() {
+# Navigate to worktree and optionally start Claude (stays in same terminal)
+enter_worktree() {
   local path="$1"
   local auto_claude="${2:-true}"
 
-  case "$TERMINAL" in
-    warp)
-      # Warp URI scheme (macOS)
-      local encoded_path
-      if command -v python3 >/dev/null 2>&1; then
-        encoded_path=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$path', safe=''))")
-      else
-        encoded_path="$path"
-      fi
+  cd "$path" || {
+    echo -e "${RED}Error: Could not cd to $path${NC}"
+    return 1
+  }
 
-      open "warp://action/new_tab?path=${encoded_path}"
-
-      if [[ "$auto_claude" == "true" ]]; then
-        sleep 0.5
-        osascript -e '
-          tell application "Warp"
-            activate
-            delay 0.3
-            tell application "System Events"
-              keystroke "claude"
-              delay 0.1
-              keystroke return
-            end tell
-          end tell
-        ' 2>/dev/null || true
-      fi
-      ;;
-
-    iterm)
-      # iTerm2 AppleScript (macOS)
-      if [[ "$auto_claude" == "true" ]]; then
-        osascript -e "tell application \"iTerm\"
-          tell current window
-            create tab with default profile
-            tell current session
-              write text \"cd '$path' && claude\"
-            end tell
-          end tell
-        end tell" 2>/dev/null || true
-      else
-        osascript -e "tell application \"iTerm\"
-          tell current window
-            create tab with default profile
-            tell current session
-              write text \"cd '$path'\"
-            end tell
-          end tell
-        end tell" 2>/dev/null || true
-      fi
-      ;;
-
-    terminal)
-      # macOS Terminal.app
-      open -a Terminal "$path"
-      if [[ "$auto_claude" == "true" ]]; then
-        echo -e "${YELLOW}Tip:${NC} Run 'claude' to start Claude Code"
-      fi
-      ;;
-
-    kitty)
-      # Kitty terminal (Linux/macOS)
-      if [[ "$auto_claude" == "true" ]]; then
-        kitty @ launch --type=tab --cwd="$path" bash -c "claude; exec bash" 2>/dev/null || \
-          kitty @ launch --type=tab --cwd="$path" 2>/dev/null || true
-      else
-        kitty @ launch --type=tab --cwd="$path" 2>/dev/null || true
-      fi
-      ;;
-
-    gnome-terminal)
-      # GNOME Terminal (Linux)
-      if [[ "$auto_claude" == "true" ]]; then
-        gnome-terminal --tab --working-directory="$path" -- bash -c "claude; exec bash" 2>/dev/null || true
-      else
-        gnome-terminal --tab --working-directory="$path" 2>/dev/null || true
-      fi
-      ;;
-
-    *)
-      # Fallback: just print instructions
-      echo -e "\n${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-      echo -e "${CYAN}Worktree ready at:${NC} $path"
-      echo -e "\n${YELLOW}To open:${NC}"
-      echo -e "  cd $path"
-      [[ "$auto_claude" == "true" ]] && echo -e "  claude"
-      echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-      return 1
-      ;;
-  esac
-
-  return 0
+  if [[ "$auto_claude" == "true" ]]; then
+    if command -v claude >/dev/null 2>&1; then
+      exec claude
+    else
+      echo -e "${YELLOW}Claude CLI not found.${NC} Install from: https://claude.ai/code"
+      exec "$SHELL"
+    fi
+  else
+    exec "$SHELL"
+  fi
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -590,8 +515,7 @@ cmd_new() {
     auto_claude=$(get_config_value "$root" "AUTO_CLAUDE" "true")
     [[ "$no_claude" == "true" ]] && auto_claude="false"
 
-    echo -e "\n${CYAN}Opening terminal...${NC}"
-    open_new_tab "$wt_dir" "$auto_claude"
+    enter_worktree "$wt_dir" "$auto_claude"
     return
   fi
 
@@ -639,8 +563,7 @@ cmd_new() {
   auto_claude=$(get_config_value "$root" "AUTO_CLAUDE" "true")
   [[ "$no_claude" == "true" ]] && auto_claude="false"
 
-  echo -e "\n${CYAN}Opening terminal...${NC}"
-  open_new_tab "$wt_dir" "$auto_claude"
+  enter_worktree "$wt_dir" "$auto_claude"
 }
 
 cmd_go() {
@@ -683,7 +606,7 @@ cmd_go() {
   echo -e "${CYAN}Opening worktree:${NC} $branch"
   [[ -n "$port" ]] && echo -e "${CYAN}Port:${NC} $port"
 
-  open_new_tab "$wt_dir" "$auto_claude"
+  enter_worktree "$wt_dir" "$auto_claude"
 }
 
 cmd_ls() {
@@ -1134,8 +1057,8 @@ cmd_help() {
 
   ${BOLD}WORKTREE COMMANDS:${NC}
     new <branch> [--from <base>] [--no-install] [--no-claude]
-                         Create worktree + open terminal + start Claude
-    go <branch>          Open existing worktree in new terminal tab
+                         Create worktree + cd into it + start Claude
+    go <branch>          Switch to existing worktree + start Claude
     ls                   List all worktrees with status
     rm <branch>          Remove a worktree
     prune                Clean up stale worktrees
