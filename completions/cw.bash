@@ -1,6 +1,6 @@
 #!/bin/bash
 # cw - Claude Worktree completion for Bash
-# https://github.com/YOUR_USERNAME/cw
+# https://github.com/smitfire/cw
 
 _cw_completions() {
   local cur prev words cword

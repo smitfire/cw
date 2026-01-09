@@ -1,10 +1,10 @@
 class Cw < Formula
   desc "Claude Worktree - Git worktrees + Claude Code + GitHub integration"
-  homepage "https://github.com/YOUR_USERNAME/cw"
-  url "https://github.com/YOUR_USERNAME/cw/archive/refs/tags/v1.0.0.tar.gz"
+  homepage "https://github.com/smitfire/cw"
+  url "https://github.com/smitfire/cw/archive/refs/tags/v1.0.0.tar.gz"
   sha256 "PLACEHOLDER_SHA256_HASH"
   license "MIT"
-  head "https://github.com/YOUR_USERNAME/cw.git", branch: "main"
+  head "https://github.com/smitfire/cw.git", branch: "main"
 
   depends_on "gh" => :recommended
 

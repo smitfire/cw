@@ -1,7 +1,7 @@
 #compdef cw
 
 # cw - Claude Worktree completion for Zsh
-# https://github.com/YOUR_USERNAME/cw
+# https://github.com/smitfire/cw
 
 _cw() {
   local -a commands

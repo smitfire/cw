@@ -1,10 +1,10 @@
 #!/bin/bash
 # cw installer - Claude Worktree CLI
-# Usage: curl -sL https://raw.githubusercontent.com/YOUR_USERNAME/cw/main/install.sh | bash
+# Usage: curl -sL https://raw.githubusercontent.com/smitfire/cw/main/install.sh | bash
 
 set -e
 
-REPO="YOUR_USERNAME/cw"
+REPO="smitfire/cw"
 INSTALL_DIR="${CW_INSTALL_DIR:-$HOME/.local/bin}"
 VERSION="${CW_VERSION:-main}"
 

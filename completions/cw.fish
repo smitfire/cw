@@ -1,5 +1,5 @@
 # cw - Claude Worktree completion for Fish
-# https://github.com/YOUR_USERNAME/cw
+# https://github.com/smitfire/cw
 
 # Disable file completion
 complete -c cw -f

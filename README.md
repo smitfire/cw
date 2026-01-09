@@ -7,20 +7,20 @@ Git worktrees + Claude Code + GitHub, unified.
 ### Homebrew (Recommended)
 
 ```bash
-brew tap YOUR_USERNAME/cw
+brew tap smitfire/cw
 brew install cw
 ```
 
 ### Manual Install
 
 ```bash
-curl -sL https://raw.githubusercontent.com/YOUR_USERNAME/cw/main/install.sh | bash
+curl -sL https://raw.githubusercontent.com/smitfire/cw/main/install.sh | bash
 ```
 
 ### From Source
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/cw.git
+git clone https://github.com/smitfire/cw.git
 cd cw
 cp bin/cw ~/.local/bin/
 chmod +x ~/.local/bin/cw
