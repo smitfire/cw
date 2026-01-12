@@ -1268,7 +1268,7 @@ main() {
     sync)    cmd_sync "$@" ;;
     status)  cmd_status ;;
     ports)   cmd_ports ;;
-    prune)   cmd_prune ;;
+    prune)   cmd_prune "$@" ;;
     init)    cmd_init ;;
     version|--version|-v) cmd_version ;;
     help|--help|-h)       cmd_help ;;
