@@ -7,12 +7,13 @@
 │  cw new feat/auth                                           │
 │                                                             │
 │  ✓ Created worktree at ../myapp__wt/feat-auth               │
-│  ✓ Copied .env, .env.local                                  │
+│  ✓ Copied .env                                              │
+│  ✓ Created .env.local from .env                             │
+│  ✓ Updated package.json ports (Next.js: 3001)               │
 │  ✓ Linked .claude directory                                 │
 │  ✓ Installed dependencies (pnpm)                            │
 │  ✓ Assigned port 3001                                       │
-│  ✓ Opening Warp tab...                                      │
-│  ✓ Starting Claude Code session...                          │
+│  ✓ Starting shell session...                                │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -20,12 +21,19 @@
 
 **The Problem:** Working on multiple features simultaneously with Claude Code is painful:
 - Manually creating worktrees with long git commands
-- Copying env files every time
+- Copying env files and updating ports manually
+- Port conflicts when running multiple dev servers
 - Figuring out which ports are free
 - Opening terminals, navigating, starting Claude
 - Losing track of what's where
 
-**The Solution:** One command does it all.
+**The Solution:** One command does it all:
+- ✅ Auto-creates `.env.local` from `.env` with correct ports
+- ✅ Updates `package.json` ports dynamically (Next.js, Inngest, etc.)
+- ✅ No port conflicts - each worktree gets a unique port
+- ✅ Detects Claude Code (won't launch nested sessions)
+- ✅ Cleans up merged branches automatically
+- ✅ Organizes worktrees in one place
 
 ## Install
 
@@ -57,6 +65,34 @@ cw new feat/my-feature     # Create worktree → Claude opens automatically
 ```
 
 That's it. You're coding.
+
+---
+
+## Features
+
+### 🎯 Automatic Environment Setup
+- Creates `.env.local` from `.env` automatically
+- Updates port numbers in both files
+- Updates `package.json` dev scripts with correct ports
+- Handles Next.js, Inngest, and other localhost URLs
+
+### 🔢 Smart Port Management
+- Each worktree gets a unique port (3000, 3001, 3002...)
+- Automatically configures all dev scripts
+- No manual port configuration needed
+- No conflicts when running multiple servers
+
+### 🧹 Intelligent Cleanup
+- `cw prune --merged` finds branches merged into your base branch
+- Shows PR status before removal
+- Interactive or automatic (`--yes`) removal
+- Frees up ports and cleans up directories
+
+### 🤖 Claude Code Integration
+- Auto-detects when running inside Claude Code
+- Won't launch nested sessions
+- Safe for Claude to use `cw` commands directly
+- Shares `.claude` config via symlink
 
 ---
 
@@ -136,9 +172,9 @@ $ cw status
 
 | Command | What it does |
 |---------|--------------|
-| `cw new <branch>` | Create worktree + open Claude |
+| `cw new <branch>` | Create worktree + auto-configure ports |
 | `cw go <branch>` | Jump to existing worktree |
-| `cw ls` | List all worktrees |
+| `cw ls` | List all worktrees with ports & PRs |
 | `cw rm <branch>` | Remove a worktree |
 | `cw pr` | Create GitHub PR |
 | `cw prs` | List your open PRs |
@@ -146,6 +182,8 @@ $ cw status
 | `cw status` | Full dashboard |
 | `cw ports` | Show port assignments |
 | `cw prune` | Clean up stale worktrees |
+| `cw prune --merged` | Remove worktrees for merged branches |
+| `cw prune --merged --yes` | Auto-remove without prompts |
 
 ### Options
 
@@ -155,6 +193,8 @@ cw new feat/auth --no-install    # Skip package installation
 cw new feat/auth --no-claude     # Don't auto-start Claude
 cw pr --draft                    # Create draft PR
 cw pr -t "Title" -b "Body"       # Set PR title and body
+cw prune --merged                # Interactive cleanup of merged branches
+cw prune --merged --yes          # Auto-remove all merged branches
 ```
 
 ---
@@ -174,7 +214,7 @@ SYMLINK_DIRS=.claude        # Symlink these directories
 
 ### How Ports Work
 
-Each worktree gets a unique port:
+Each worktree gets a unique port automatically assigned and configured:
 
 ```
 main repo     → 3000 (BASE_PORT)
@@ -183,7 +223,15 @@ feat/api      → 3002
 fix/bug-123   → 3003
 ```
 
-No more port conflicts. Run `cw ports` to see assignments.
+**What gets updated automatically:**
+- `.env` - Copied with port updated
+- `.env.local` - Created from `.env` with correct port
+- `package.json` - Dev scripts updated (e.g., `next dev -p 3001`)
+- Inngest URLs - Updated to use correct localhost port
+
+**Result:** Run `pnpm dev` in multiple worktrees simultaneously - no conflicts!
+
+Run `cw ports` to see all port assignments.
 
 ---
 
@@ -245,7 +293,9 @@ refactor/# Refactoring
 
 **Quick Cleanup:** Remove all merged worktrees
 ```bash
-cw prune
+cw prune --merged --yes    # Auto-remove merged branches
+cw prune --merged          # Interactive (asks y/N for each)
+cw prune                   # Only stale/orphaned worktrees
 ```
 
 **Check What's Open:**
