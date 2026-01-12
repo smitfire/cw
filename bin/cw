@@ -1001,6 +1001,7 @@ cmd_ports() {
 cmd_prune() {
   local merged_only=false
   local base_branch=""
+  local yes_all=false
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -1011,6 +1012,10 @@ cmd_prune() {
       --base|-b)
         base_branch="$2"
         shift 2
+        ;;
+      --yes|-y)
+        yes_all=true
+        shift
         ;;
       *)
         shift
@@ -1078,10 +1083,18 @@ cmd_prune() {
         echo -e "    ${DIM}PR:${NC}     $pr_display"
         echo -e "    ${DIM}Status:${NC} ${GREEN}Merged into $base_branch${NC}"
 
-        read -p "    Remove this worktree? (y/N) " -n 1 -r
-        echo
+        local should_remove=false
+        if [[ "$yes_all" == "true" ]]; then
+          should_remove=true
+        else
+          read -p "    Remove this worktree? (y/N) " -n 1 -r
+          echo
+          if [[ $REPLY =~ ^[Yy]$ ]]; then
+            should_remove=true
+          fi
+        fi
 
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
+        if [[ "$should_remove" == "true" ]]; then
           git worktree remove "$wt_dir" --force 2>/dev/null || {
             echo -e "    ${RED}✗${NC} Failed to remove (may have uncommitted changes)"
             continue
@@ -1224,7 +1237,9 @@ cmd_help() {
     ls                   List all worktrees with status
     rm <branch>          Remove a worktree
     prune                Clean up stale worktrees
-    prune --merged       Remove worktrees for branches merged into base
+    prune --merged [--yes]
+                         Remove worktrees for branches merged into base
+                         --yes: Skip confirmation prompts
 
   ${BOLD}GITHUB COMMANDS:${NC}
     pr [--draft]         Create PR from current branch
@@ -1244,7 +1259,8 @@ cmd_help() {
     cw pr                            # Create PR targeting dev
     cw pr --draft                    # Create draft PR
     cw sync                          # Rebase on dev
-    cw prune --merged                # Remove merged branch worktrees
+    cw prune --merged                # Remove merged branches (interactive)
+    cw prune --merged --yes          # Remove merged branches (automatic)
     cw status                        # See everything
 
   ${BOLD}CONFIG (.worktreerc):${NC}
