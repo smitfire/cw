@@ -1041,11 +1041,11 @@ cmd_prune() {
     while IFS= read -r branch; do
       [[ -z "$branch" ]] && continue
 
-      local dir_name
-      dir_name=$(branch_to_dir "$branch")
-      local wt_dir="${wt_base}/${dir_name}"
+      # Find the actual worktree path for this branch (not just in __wt/)
+      local wt_dir
+      wt_dir=$(git worktree list --porcelain | grep -B2 "branch refs/heads/${branch}$" | grep "^worktree" | sed 's/worktree //' | head -1 || true)
 
-      if [[ -d "$wt_dir" ]]; then
+      if [[ -n "$wt_dir" && "$wt_dir" != "$root" ]]; then
         local port
         port=$(get_port_for_branch "$root" "$branch")
 
