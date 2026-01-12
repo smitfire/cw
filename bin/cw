@@ -422,6 +422,12 @@ copy_ignored_directories() {
     echo -e "  ${GREEN}✓${NC} Copied .claude (independent settings per worktree)"
   fi
 
+  # Copy docs directory if it exists
+  if [[ -d "$root/docs" ]]; then
+    cp -R "$root/docs" "$wt_dir/"
+    echo -e "  ${GREEN}✓${NC} Copied docs"
+  fi
+
   # Copy config files (MCP, database, package manager configs)
   local config_files=(".mcp.json" "dbhub.toml" ".npmrc.local" "bunfig.toml")
   for config_file in "${config_files[@]}"; do
@@ -1235,7 +1241,7 @@ BASE_PORT=$base_port
 # Env files to copy (space-separated)
 ENV_FILES=$env_files
 
-# Auto-copied directories: node_modules, .claude
+# Auto-copied directories: node_modules, .claude, docs
 # Auto-copied config files: .mcp.json, dbhub.toml, .npmrc.local, bunfig.toml
 
 # ─────────────────────────────────────────────────────────────────
