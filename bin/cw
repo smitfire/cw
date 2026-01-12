@@ -344,9 +344,19 @@ create_env_with_port() {
   if [[ "$port" != "$base_port" ]]; then
     for f in $env_files; do
       if [[ -f "$wt_dir/$f" ]]; then
+        # Update PORT variable
         if grep -q "^PORT=" "$wt_dir/$f"; then
           sed_inplace "s/^PORT=.*/PORT=$port/" "$wt_dir/$f"
         fi
+        # Update APP_URL
+        if grep -q "^APP_URL=" "$wt_dir/$f"; then
+          sed_inplace "s|^APP_URL=\"http://localhost:${base_port}\"|APP_URL=\"http://localhost:${port}\"|" "$wt_dir/$f"
+        fi
+        # Update NEXTAUTH_URL
+        if grep -q "^NEXTAUTH_URL=" "$wt_dir/$f"; then
+          sed_inplace "s|^NEXTAUTH_URL=\"http://localhost:${base_port}\"|NEXTAUTH_URL=\"http://localhost:${port}\"|" "$wt_dir/$f"
+        fi
+        # Update any other localhost:PORT references
         if grep -q "localhost:${base_port}" "$wt_dir/$f"; then
           sed_inplace "s/localhost:${base_port}/localhost:${port}/g" "$wt_dir/$f"
         fi
@@ -357,11 +367,17 @@ create_env_with_port() {
       if grep -q "^PORT=" "$wt_dir/.env.local"; then
         sed_inplace "s/^PORT=.*/PORT=$port/" "$wt_dir/.env.local"
       fi
+      if grep -q "^APP_URL=" "$wt_dir/.env.local"; then
+        sed_inplace "s|^APP_URL=\"http://localhost:${base_port}\"|APP_URL=\"http://localhost:${port}\"|" "$wt_dir/.env.local"
+      fi
+      if grep -q "^NEXTAUTH_URL=" "$wt_dir/.env.local"; then
+        sed_inplace "s|^NEXTAUTH_URL=\"http://localhost:${base_port}\"|NEXTAUTH_URL=\"http://localhost:${port}\"|" "$wt_dir/.env.local"
+      fi
       if grep -q "localhost:${base_port}" "$wt_dir/.env.local"; then
         sed_inplace "s/localhost:${base_port}/localhost:${port}/g" "$wt_dir/.env.local"
       fi
     fi
-    echo -e "  ${GREEN}✓${NC} Updated port to $port in env files"
+    echo -e "  ${GREEN}✓${NC} Updated PORT, APP_URL, NEXTAUTH_URL to $port in env files"
   fi
 }
 
@@ -630,7 +646,6 @@ cmd_new() {
   echo -e "\n${BLUE}Bootstrapping environment...${NC}"
   create_env_with_port "$wt_dir" "$root" "$port" "$base_port"
   update_package_json_ports "$wt_dir" "$port" "$base_port"
-  setup_symlinks "$wt_dir" "$root"
 
   if [[ "$skip_install" == false ]]; then
     echo ""
@@ -1220,10 +1235,8 @@ BASE_PORT=$base_port
 # Env files to copy (space-separated)
 ENV_FILES=$env_files
 
-# Directories to symlink instead of copy (space-separated)
-# Note: .claude, node_modules are automatically copied
-# Note: .mcp.json, dbhub.toml, .npmrc.local, bunfig.toml are auto-copied
-SYMLINK_DIRS=$symlink_dirs
+# Auto-copied directories: node_modules, .claude
+# Auto-copied config files: .mcp.json, dbhub.toml, .npmrc.local, bunfig.toml
 
 # ─────────────────────────────────────────────────────────────────
 # GitHub Settings
