@@ -200,7 +200,7 @@ get_port_for_branch() {
   config=$(get_port_config "$root")
 
   if [[ -f "$config" ]]; then
-    grep "^${branch}:" "$config" 2>/dev/null | cut -d: -f2
+    grep "^${branch}:" "$config" 2>/dev/null | cut -d: -f2 || true
   fi
 }
 
