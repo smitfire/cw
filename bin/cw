@@ -448,6 +448,13 @@ enter_worktree() {
     return 1
   }
 
+  # Skip launching Claude if already inside Claude Code
+  if [[ -n "${CLAUDECODE:-}" ]]; then
+    echo -e "${CYAN}Already inside Claude Code - staying in current session${NC}"
+    exec "$SHELL"
+    return
+  fi
+
   if [[ "$auto_claude" == "true" ]]; then
     if command -v claude >/dev/null 2>&1; then
       exec claude
