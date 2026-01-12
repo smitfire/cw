@@ -339,6 +339,12 @@ create_env_with_port() {
     fi
   done
 
+  # Auto-create .env.local from .env if .env exists but .env.local doesn't
+  if [[ -f "$root/.env" && ! -f "$wt_dir/.env.local" ]]; then
+    cp "$root/.env" "$wt_dir/.env.local"
+    echo -e "  ${GREEN}✓${NC} Created .env.local from .env"
+  fi
+
   if [[ "$port" != "$base_port" ]]; then
     for f in $env_files; do
       if [[ -f "$wt_dir/$f" ]]; then
@@ -350,6 +356,15 @@ create_env_with_port() {
         fi
       fi
     done
+    # Also update .env.local with new port
+    if [[ -f "$wt_dir/.env.local" ]]; then
+      if grep -q "^PORT=" "$wt_dir/.env.local"; then
+        sed_inplace "s/^PORT=.*/PORT=$port/" "$wt_dir/.env.local"
+      fi
+      if grep -q "localhost:${base_port}" "$wt_dir/.env.local"; then
+        sed_inplace "s/localhost:${base_port}/localhost:${port}/g" "$wt_dir/.env.local"
+      fi
+    fi
     echo -e "  ${GREEN}✓${NC} Updated port to $port in env files"
   fi
 }
@@ -387,6 +402,36 @@ run_install() {
 
   echo -e "  ${CYAN}→${NC} Running $install_cmd..."
   (cd "$wt_dir" && $install_cmd)
+}
+
+update_package_json_ports() {
+  local wt_dir="$1"
+  local port="$2"
+  local base_port="$3"
+
+  if [[ "$port" == "$base_port" ]]; then
+    return  # No changes needed for base worktree
+  fi
+
+  local pkg="$wt_dir/package.json"
+
+  if [[ ! -f "$pkg" ]]; then
+    return
+  fi
+
+  # Update Next.js dev port: -p 3002 → -p 3005
+  if grep -q "\"dev:next\".*-p ${base_port}" "$pkg"; then
+    sed_inplace "s/\"dev:next\": \"next dev --turbopack -p ${base_port}\"/\"dev:next\": \"next dev --turbopack -p ${port}\"/" "$pkg"
+  elif grep -q "\"dev:next\".*--port ${base_port}" "$pkg"; then
+    sed_inplace "s/\"dev:next\": \"next dev --turbopack --port ${base_port}\"/\"dev:next\": \"next dev --turbopack --port ${port}\"/" "$pkg"
+  fi
+
+  # Update Inngest URLs: localhost:3002 → localhost:3005
+  if grep -q "http://localhost:${base_port}/" "$pkg"; then
+    sed_inplace "s|http://localhost:${base_port}/|http://localhost:${port}/|g" "$pkg"
+  fi
+
+  echo -e "  ${GREEN}✓${NC} Updated package.json ports (Next.js: $port)"
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -545,6 +590,7 @@ cmd_new() {
 
   echo -e "\n${BLUE}Bootstrapping environment...${NC}"
   create_env_with_port "$wt_dir" "$root" "$port" "$base_port"
+  update_package_json_ports "$wt_dir" "$port" "$base_port"
   setup_symlinks "$wt_dir" "$root"
 
   if [[ "$skip_install" == false ]]; then
@@ -946,35 +992,144 @@ cmd_ports() {
 }
 
 cmd_prune() {
+  local merged_only=false
+  local base_branch=""
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --merged|-m)
+        merged_only=true
+        shift
+        ;;
+      --base|-b)
+        base_branch="$2"
+        shift 2
+        ;;
+      *)
+        shift
+        ;;
+    esac
+  done
+
   local root
   root=$(get_git_root)
 
-  echo -e "${BLUE}Pruning stale worktrees...${NC}"
-  git worktree prune -v
-
-  local config
-  config=$(get_port_config "$root")
-  local wt_base
-  wt_base=$(get_wt_base "$root")
-
-  if [[ -f "$config" ]]; then
-    local temp_config="${config}.tmp"
-    > "$temp_config"
-
-    while IFS=: read -r branch port; do
-      local dir_name
-      dir_name=$(branch_to_dir "$branch")
-      if [[ -d "${wt_base}/${dir_name}" ]]; then
-        echo "${branch}:${port}" >> "$temp_config"
-      else
-        echo -e "  ${YELLOW}Removed orphaned port:${NC} $branch → $port"
-      fi
-    done < "$config"
-
-    mv "$temp_config" "$config"
+  if [[ -z "$base_branch" ]]; then
+    base_branch=$(get_base_branch "$root")
   fi
 
-  echo -e "${GREEN}✓${NC} Prune complete"
+  if [[ "$merged_only" == true ]]; then
+    echo -e "${BLUE}Finding worktrees for branches merged into ${CYAN}$base_branch${BLUE}...${NC}\n"
+
+    # Get list of merged branches (excluding the base branch itself)
+    local merged_branches
+    merged_branches=$(git branch --merged "$base_branch" --format='%(refname:short)' 2>/dev/null | grep -v "^${base_branch}$" || true)
+
+    if [[ -z "$merged_branches" ]]; then
+      echo -e "${YELLOW}No merged branches found${NC}"
+      return
+    fi
+
+    local wt_base
+    wt_base=$(get_wt_base "$root")
+    local config
+    config=$(get_port_config "$root")
+    local removed_count=0
+    local freed_ports=""
+
+    # Check each merged branch for an existing worktree
+    while IFS= read -r branch; do
+      [[ -z "$branch" ]] && continue
+
+      local dir_name
+      dir_name=$(branch_to_dir "$branch")
+      local wt_dir="${wt_base}/${dir_name}"
+
+      if [[ -d "$wt_dir" ]]; then
+        local port
+        port=$(get_port_for_branch "$root" "$branch")
+
+        local pr_info
+        pr_info=$(get_pr_for_branch "$branch")
+        local pr_display="No PR"
+
+        if [[ -n "$pr_info" ]]; then
+          local pr_num pr_state
+          pr_num=$(echo "$pr_info" | cut -d'|' -f1)
+          pr_state=$(echo "$pr_info" | cut -d'|' -f2)
+
+          case "$pr_state" in
+            MERGED) pr_display="${MAGENTA}#$pr_num MERGED${NC}" ;;
+            CLOSED) pr_display="${RED}#$pr_num CLOSED${NC}" ;;
+            OPEN)   pr_display="${YELLOW}#$pr_num OPEN${NC}" ;;
+          esac
+        fi
+
+        echo -e "  ${GREEN}●${NC} ${BOLD}$branch${NC}"
+        echo -e "    ${DIM}Path:${NC}   $wt_dir"
+        [[ -n "$port" ]] && echo -e "    ${DIM}Port:${NC}   $port"
+        echo -e "    ${DIM}PR:${NC}     $pr_display"
+        echo -e "    ${DIM}Status:${NC} ${GREEN}Merged into $base_branch${NC}"
+
+        read -p "    Remove this worktree? (y/N) " -n 1 -r
+        echo
+
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+          git worktree remove "$wt_dir" --force 2>/dev/null || {
+            echo -e "    ${RED}✗${NC} Failed to remove (may have uncommitted changes)"
+            continue
+          }
+          remove_port "$root" "$branch"
+          echo -e "    ${GREEN}✓${NC} Removed worktree and freed port $port"
+
+          removed_count=$((removed_count + 1))
+          [[ -n "$port" ]] && freed_ports="$freed_ports $port"
+        else
+          echo -e "    ${DIM}Skipped${NC}"
+        fi
+        echo ""
+      fi
+    done <<< "$merged_branches"
+
+    git worktree prune -v
+
+    if [[ $removed_count -gt 0 ]]; then
+      echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+      echo -e "${GREEN}✓ Removed $removed_count merged worktree(s)${NC}"
+      [[ -n "$freed_ports" ]] && echo -e "${GREEN}✓ Freed ports:$freed_ports${NC}"
+      echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    else
+      echo -e "${YELLOW}No worktrees were removed${NC}"
+    fi
+  else
+    # Original prune behavior (stale worktrees only)
+    echo -e "${BLUE}Pruning stale worktrees...${NC}"
+    git worktree prune -v
+
+    local config
+    config=$(get_port_config "$root")
+    local wt_base
+    wt_base=$(get_wt_base "$root")
+
+    if [[ -f "$config" ]]; then
+      local temp_config="${config}.tmp"
+      > "$temp_config"
+
+      while IFS=: read -r branch port; do
+        local dir_name
+        dir_name=$(branch_to_dir "$branch")
+        if [[ -d "${wt_base}/${dir_name}" ]]; then
+          echo "${branch}:${port}" >> "$temp_config"
+        else
+          echo -e "  ${YELLOW}Removed orphaned port:${NC} $branch → $port"
+        fi
+      done < "$config"
+
+      mv "$temp_config" "$config"
+    fi
+
+    echo -e "${GREEN}✓${NC} Prune complete"
+  fi
 }
 
 cmd_init() {
@@ -1062,6 +1217,7 @@ cmd_help() {
     ls                   List all worktrees with status
     rm <branch>          Remove a worktree
     prune                Clean up stale worktrees
+    prune --merged       Remove worktrees for branches merged into base
 
   ${BOLD}GITHUB COMMANDS:${NC}
     pr [--draft]         Create PR from current branch
@@ -1081,6 +1237,7 @@ cmd_help() {
     cw pr                            # Create PR targeting dev
     cw pr --draft                    # Create draft PR
     cw sync                          # Rebase on dev
+    cw prune --merged                # Remove merged branch worktrees
     cw status                        # See everything
 
   ${BOLD}CONFIG (.worktreerc):${NC}
