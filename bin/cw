@@ -314,13 +314,9 @@ detect_symlink_dirs() {
     return
   fi
 
-  local found=""
-  for d in .claude; do
-    if [[ -d "$root/$d" ]]; then
-      found="$found $d"
-    fi
-  done
-  echo "$found"
+  # .claude is now copied instead of symlinked
+  # Add other directories here if needed
+  echo ""
 }
 
 create_env_with_port() {
@@ -380,6 +376,42 @@ setup_symlinks() {
     if [[ -d "$root/$d" && ! -e "$wt_dir/$d" ]]; then
       ln -s "$root/$d" "$wt_dir/$d"
       echo -e "  ${GREEN}✓${NC} Symlinked $d"
+    fi
+  done
+}
+
+copy_ignored_directories() {
+  local wt_dir="$1"
+  local root="$2"
+
+  # Copy node_modules if it exists
+  if [[ -d "$root/node_modules" ]]; then
+    echo -e "  ${CYAN}→${NC} Copying node_modules from main repo..."
+    if command -v rsync >/dev/null 2>&1; then
+      rsync -a --link-dest="$root/node_modules/" "$root/node_modules/" "$wt_dir/node_modules/"
+    else
+      cp -R "$root/node_modules" "$wt_dir/"
+    fi
+    echo -e "  ${GREEN}✓${NC} Copied node_modules (install will verify/update)"
+  fi
+
+  # Copy .claude directory if it exists
+  if [[ -d "$root/.claude" ]]; then
+    echo -e "  ${CYAN}→${NC} Copying .claude config..."
+    if command -v rsync >/dev/null 2>&1; then
+      rsync -a "$root/.claude/" "$wt_dir/.claude/"
+    else
+      cp -R "$root/.claude" "$wt_dir/"
+    fi
+    echo -e "  ${GREEN}✓${NC} Copied .claude (independent settings per worktree)"
+  fi
+
+  # Copy config files (MCP, database, package manager configs)
+  local config_files=(".mcp.json" "dbhub.toml" ".npmrc.local" "bunfig.toml")
+  for config_file in "${config_files[@]}"; do
+    if [[ -f "$root/$config_file" && ! -f "$wt_dir/$config_file" ]]; then
+      cp "$root/$config_file" "$wt_dir/$config_file"
+      echo -e "  ${GREEN}✓${NC} Copied $config_file"
     fi
   done
 }
@@ -602,6 +634,7 @@ cmd_new() {
 
   if [[ "$skip_install" == false ]]; then
     echo ""
+    copy_ignored_directories "$wt_dir" "$root"
     run_install "$wt_dir" "$root"
   fi
 
@@ -1188,6 +1221,8 @@ BASE_PORT=$base_port
 ENV_FILES=$env_files
 
 # Directories to symlink instead of copy (space-separated)
+# Note: .claude, node_modules are automatically copied
+# Note: .mcp.json, dbhub.toml, .npmrc.local, bunfig.toml are auto-copied
 SYMLINK_DIRS=$symlink_dirs
 
 # ─────────────────────────────────────────────────────────────────
